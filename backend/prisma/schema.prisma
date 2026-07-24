@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------------
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AlertType {
+  WEATHER
+  AQI
+  HEALTH
+  SYSTEM
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+// -----------------------------------------------------------------------------
+// MODELS
+// -----------------------------------------------------------------------------
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  avatar String?
+  phone  String?
+  status Boolean @default(true)
+
+  refreshTokens RefreshToken[]
+  settings      UserSettings?
+  favorites     FavoriteLocation[]
+  notifications Notification[]
+}
+
+model UserSettings {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // JSON field for flexible settings: { "emailAlerts": true, "pushAlerts": true, "aqiThreshold": 100 }
+  preferences Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Location {
+  id        String  @id @default(uuid())
+  name      String
+  province  String?
+  district  String?
+  ward      String?
+  latitude  Float
+  longitude Float
+  timezone  String?
+  country   String?
+
+  favorites  FavoriteLocation[]
+  weather    WeatherData[]
+  airQuality AirQualityData[]
+  forecasts  ForecastData[]
+}
+
+model FavoriteLocation {
+  id         String @id @default(uuid())
+  userId     String
+  locationId String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, locationId])
+}
+
+model WeatherData {
+  id         String   @id @default(uuid())
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  feelsLike     Float?
+  pressure      Float?
+  visibility    Float?
+  uvIndex       Float?
+  rain          Float?
+  windDirection Float?
+  condition     String?
+  icon          String?
+
+  timestamp DateTime @default(now())
+}
+
+model AirQualityData {
+  id         String   @id @default(uuid())
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  aqi  Int
+  pm25 Float?
+  pm10 Float?
+  co   Float?
+  o3   Float?
+  no2  Float?
+  so2  Float?
+
+  timestamp DateTime @default(now())
+}
+
+model ForecastData {
+  id         String   @id @default(uuid())
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  forecastDate DateTime
+  temperature  Float?
+  aqi          Int?
+  condition    String?
+
+  createdAt DateTime @default(now())
+}
+
+model HealthRecommendation {
+  id          String @id @default(uuid())
+  minAqi      Int
+  maxAqi      Int
+  title       String
+  description String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    AlertType
+  title   String
+  message String
+  status  NotificationStatus @default(UNREAD)
+
+  createdAt DateTime @default(now())
+}
+
+model PredictionHistory {
+  id         String  @id @default(uuid())
+  locationId String?
+  prompt     String
+  response   String
+
+  createdAt DateTime @default(now())
+}
+
+model SystemLog {
+  id      String @id @default(uuid())
+  level   String // INFO, ERROR, WARN
+  context String // e.g. "Scheduler", "API"
+  message String
+  meta    Json? // Additional error traces or details
+
+  createdAt DateTime @default(now())
+}

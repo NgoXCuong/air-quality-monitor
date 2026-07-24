@@ -1,0 +1,15 @@
+# AI IDE
+.claude/
+.agents/
+.windsurf/
+.cursor/
+
+# Node
+node_modules/
+
+# Build
+dist/
+.next/
+
+# Environment
+.env

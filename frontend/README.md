@@ -1,0 +1,1 @@
+Prisma Studio is running at: http://localhost:51212
