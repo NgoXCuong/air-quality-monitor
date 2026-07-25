@@ -44,6 +44,14 @@ model User {
   phone  String?
   status Boolean @default(true)
 
+  // Email verification
+  isVerified       Boolean  @default(false)
+  emailVerifyToken String?
+
+  // Password reset
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
+
   refreshTokens RefreshToken[]
   settings      UserSettings?
   favorites     FavoriteLocation[]
