@@ -300,25 +300,37 @@ export class AuthService {
         };
     }
 
-    async resendVerification(userId: string) {
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
-        if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    async resendVerification(email: string) {
+        const user = await this.prisma.user.findUnique({
+            where: { email },
+        });
 
-        if (user.isVerified) {
-            throw new BadRequestException('Tài khoản đã được xác thực');
+        // Không tiết lộ email có tồn tại hay không
+        if (!user || user.isVerified) {
+            return {
+                message:
+                    'Nếu email hợp lệ và chưa được xác thực, chúng tôi đã gửi email xác thực.',
+                data: null,
+            };
         }
 
         const emailVerifyToken = generateToken();
 
         await this.prisma.user.update({
             where: { id: user.id },
-            data: { emailVerifyToken },
+            data: {
+                emailVerifyToken,
+            },
         });
 
-        await this.mailService.sendVerificationEmail(user.email, emailVerifyToken);
+        await this.mailService.sendVerificationEmail(
+            user.email,
+            emailVerifyToken,
+        );
 
         return {
-            message: 'Email xác thực đã được gửi lại',
+            message:
+                'Nếu email hợp lệ và chưa được xác thực, chúng tôi đã gửi email xác thực.',
             data: null,
         };
     }

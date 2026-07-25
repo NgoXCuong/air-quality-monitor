@@ -29,6 +29,7 @@ import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/strategies/jwt.strategy';
+import { ResendVerificationDto } from './dto/resend.verification.dto';
 
 @ApiTags('Auth')
 @UseGuards(JwtAuthGuard)
@@ -123,11 +124,11 @@ export class AuthController {
         return this.authService.verifyEmail(token);
     }
 
+    @Public()
     @Post('resend-verification')
     @HttpCode(HttpStatus.OK)
-    @ApiBearerAuth()
     @ApiOperation({ summary: 'Gửi lại email xác thực' })
-    resendVerification(@CurrentUser() user: JwtPayload) {
-        return this.authService.resendVerification(user.sub);
+    resendVerification(@Body() dto: ResendVerificationDto) {
+        return this.authService.resendVerification(dto.email);
     }
 }

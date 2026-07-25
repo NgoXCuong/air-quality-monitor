@@ -73,10 +73,12 @@ model UserSettings {
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique
-  userId    String
+  userId    String   
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Location {
@@ -114,16 +116,24 @@ model WeatherData {
   locationId String
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
+  temperature   Float?
   feelsLike     Float?
+  humidity      Float?
   pressure      Float?
+
+  windSpeed     Float?
+  windDirection Float?
+
   visibility    Float?
   uvIndex       Float?
   rain          Float?
-  windDirection Float?
+
   condition     String?
   icon          String?
 
   timestamp DateTime @default(now())
+
+  @@index([locationId, timestamp])
 }
 
 model AirQualityData {
