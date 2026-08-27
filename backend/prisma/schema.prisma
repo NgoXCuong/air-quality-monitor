@@ -27,6 +27,12 @@ enum NotificationStatus {
   READ
 }
 
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -52,10 +58,12 @@ model User {
   passwordResetToken  String?
   passwordResetExpiry DateTime?
 
-  refreshTokens RefreshToken[]
-  settings      UserSettings?
-  favorites     FavoriteLocation[]
-  notifications Notification[]
+  refreshTokens  RefreshToken[]
+  settings       UserSettings?
+  favorites      FavoriteLocation[]
+  notifications  Notification[]
+  chatHistories  ChatHistory[]
+  predictions    PredictionHistory[]
 }
 
 model UserSettings {
@@ -92,10 +100,14 @@ model Location {
   timezone  String?
   country   String?
 
-  favorites  FavoriteLocation[]
-  weather    WeatherData[]
-  airQuality AirQualityData[]
-  forecasts  ForecastData[]
+  favorites      FavoriteLocation[]
+  weather        WeatherData[]
+  airQuality     AirQualityData[]
+  forecasts      ForecastData[]
+  aqiForecasts   AqiForecast[]
+  predictions    PredictionHistory[]
+
+  @@index([latitude, longitude])
 }
 
 model FavoriteLocation {
@@ -150,6 +162,8 @@ model AirQualityData {
   so2  Float?
 
   timestamp DateTime @default(now())
+
+  @@index([locationId, timestamp])
 }
 
 model ForecastData {
@@ -163,6 +177,8 @@ model ForecastData {
   condition    String?
 
   createdAt DateTime @default(now())
+
+  @@index([locationId, forecastDate])
 }
 
 model HealthRecommendation {
@@ -187,23 +203,72 @@ model Notification {
   status  NotificationStatus @default(UNREAD)
 
   createdAt DateTime @default(now())
+
+  @@index([userId, status])
 }
 
 model PredictionHistory {
-  id         String  @id @default(uuid())
+  id         String    @id @default(uuid())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
   prompt     String
   response   String
+  context    Json?     // AQI + weather data tại thời điểm hỏi
 
   createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([locationId])
 }
 
 model SystemLog {
-  id      String @id @default(uuid())
-  level   String // INFO, ERROR, WARN
-  context String // e.g. "Scheduler", "API"
+  id      String   @id @default(uuid())
+  level   LogLevel // INFO, WARN, ERROR
+  context String   // e.g. "Scheduler", "API"
   message String
-  meta    Json? // Additional error traces or details
+  meta    Json?    // Additional error traces or details
 
   createdAt DateTime @default(now())
+
+  @@index([level, createdAt])
+}
+
+// -----------------------------------------------------------------------------
+// AI / PREDICTION
+// -----------------------------------------------------------------------------
+
+model AqiForecast {
+  id            String   @id @default(uuid())
+  locationId    String
+  location      Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  forecastHour  Int      // Giờ thứ mấy trong tương lai (1, 2, ..., 48)
+  predictedAqi  Int      // AQI dự đoán từ model LSTM
+  predictedPm25 Float?   // PM2.5 dự đoán
+  actualAqi     Int?     // AQI thực tế (cập nhật sau để đánh giá model)
+
+  confidence    Float?   // Độ tin cậy (0-1)
+  modelVersion  String?  // Version model ("v1.0", "v1.1"...)
+
+  predictedAt   DateTime @default(now()) // Thời điểm chạy dự đoán
+  targetTime    DateTime // Thời điểm được dự đoán
+
+  @@index([locationId, targetTime])
+  @@index([locationId, predictedAt])
+}
+
+model ChatHistory {
+  id       String @id @default(uuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  message  String // Câu hỏi của user
+  response String // Trả lời từ Gemini AI
+  context  Json?  // Snapshot dữ liệu AQI + weather tại thời điểm hỏi
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
