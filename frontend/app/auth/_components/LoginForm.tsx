@@ -32,10 +32,10 @@ export default function LoginForm({ onSuccess, onSwitch, onForgotPassword }: Pro
     setIsForbidden(false);
     try {
       const res = await authApi.login(form);
-      const { accessToken, refreshToken, user } = res.data.data;
+      const { accessToken, user } = res.data.data;
+      // Refresh token is now stored as HttpOnly cookie by backend
       localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      onSuccess({ accessToken, refreshToken, user });
+      onSuccess({ accessToken, refreshToken: '', user });
     } catch (err: unknown) {
       const errData = (err as { response?: { data?: { message?: string }; status?: number } })?.response;
       const status = errData?.status;

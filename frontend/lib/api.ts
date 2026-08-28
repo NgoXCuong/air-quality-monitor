@@ -5,6 +5,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1
 export const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // Gửi cookie cross-origin (HttpOnly refresh token)
 });
 
 // Inject access token automatically
@@ -16,7 +17,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-refresh on 401
+// Auto-refresh on 401 (refresh token is sent via HttpOnly cookie automatically)
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -24,17 +25,18 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
-        const { data } = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
-        const { accessToken, refreshToken: newRefresh } = data.data;
+        // Refresh token is sent automatically via cookie (withCredentials: true)
+        const { data } = await axios.post(
+          `${API_URL}/auth/refresh`,
+          {},
+          { withCredentials: true },
+        );
+        const { accessToken } = data.data;
         localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', newRefresh);
         original.headers.Authorization = `Bearer ${accessToken}`;
         return api(original);
       } catch {
         localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         window.location.href = '/auth';
       }
     }
@@ -51,11 +53,11 @@ export const authApi = {
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data),
 
-  refresh: (refreshToken: string) =>
-    api.post('/auth/refresh', { refreshToken }),
+  refresh: () =>
+    api.post('/auth/refresh'), // Cookie is sent automatically
 
-  logout: (refreshToken: string) =>
-    api.post('/auth/logout', { refreshToken }),
+  logout: () =>
+    api.post('/auth/logout'), // Cookie is sent automatically
 
   getMe: () =>
     api.get('/auth/me'),
@@ -72,6 +74,6 @@ export const authApi = {
   verifyEmail: (token: string) =>
     api.get(`/auth/verify-email?token=${token}`),
 
-  resendVerification: () =>
-    api.post('/auth/resend-verification'),
+  resendVerification: (email: string) =>
+    api.post('/auth/resend-verification', { email }),
 };

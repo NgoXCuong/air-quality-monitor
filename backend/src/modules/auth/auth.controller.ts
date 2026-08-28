@@ -7,6 +7,9 @@ import {
     Patch,
     Post,
     Query,
+    Req,
+    Res,
+    UnauthorizedException,
     UseGuards,
 } from '@nestjs/common';
 import {
@@ -15,12 +18,13 @@ import {
     ApiQuery,
     ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import * as express from 'express';
 
 import { AuthService } from './auth.service';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -30,6 +34,16 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/strategies/jwt.strategy';
 import { ResendVerificationDto } from './dto/resend.verification.dto';
+
+// Cookie configuration constants
+const REFRESH_COOKIE_NAME = 'refreshToken';
+const REFRESH_COOKIE_OPTIONS = (maxAgeMs: number) => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/api/v1/auth',
+    maxAge: maxAgeMs,
+});
 
 @ApiTags('Auth')
 @UseGuards(JwtAuthGuard)
@@ -43,6 +57,7 @@ export class AuthController {
 
     @Public()
     @Post('register')
+    @Throttle({ default: { ttl: 60000, limit: 3 } })
     @ApiOperation({ summary: 'Đăng ký tài khoản mới' })
     register(@Body() dto: RegisterDto) {
         return this.authService.register(dto);
@@ -51,17 +66,48 @@ export class AuthController {
     @Public()
     @Post('login')
     @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { ttl: 60000, limit: 5 } })
     @ApiOperation({ summary: 'Đăng nhập và nhận access + refresh token' })
-    login(@Body() dto: LoginDto) {
-        return this.authService.login(dto);
+    async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: express.Response) {
+        const result = await this.authService.login(dto);
+
+        // Set refresh token as HttpOnly cookie
+        const { refreshToken, ...responseData } = result.data;
+        const maxAgeMs = this.authService.getRefreshTokenMaxAgeMs();
+        res.cookie(REFRESH_COOKIE_NAME, refreshToken, REFRESH_COOKIE_OPTIONS(maxAgeMs));
+
+        return {
+            message: result.message,
+            data: responseData,
+        };
     }
 
     @Public()
     @Post('refresh')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Làm mới access token bằng refresh token' })
-    refresh(@Body() dto: RefreshTokenDto) {
-        return this.authService.refreshToken(dto);
+    @ApiOperation({ summary: 'Làm mới access token bằng refresh token (cookie)' })
+    async refresh(@Req() req: express.Request, @Res({ passthrough: true }) res: express.Response) {
+        const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
+        if (!refreshToken) {
+            throw new UnauthorizedException(
+                'Refresh token không tồn tại',
+            );
+        }
+
+        const result = await this.authService.refreshToken({ refreshToken });
+
+        // Set new refresh token cookie (rotation)
+        const maxAgeMs = this.authService.getRefreshTokenMaxAgeMs();
+        res.cookie(
+            REFRESH_COOKIE_NAME,
+            result.data.refreshToken,
+            REFRESH_COOKIE_OPTIONS(maxAgeMs),
+        );
+
+        return {
+            message: result.message,
+            data: { accessToken: result.data.accessToken },
+        };
     }
 
     @Get('me')
@@ -75,11 +121,18 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Đăng xuất (xóa refresh token)' })
-    logout(
+    async logout(
         @CurrentUser() user: JwtPayload,
-        @Body() dto: RefreshTokenDto,
+        @Req() req: express.Request,
+        @Res({ passthrough: true }) res: express.Response,
     ) {
-        return this.authService.logout(user.sub, dto.refreshToken);
+        const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME] || '';
+        const result = await this.authService.logout(user.sub, refreshToken);
+
+        // Clear cookie
+        res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/v1/auth' });
+
+        return result;
     }
 
     // ─────────────────────────────────────────
@@ -89,16 +142,23 @@ export class AuthController {
     @Patch('change-password')
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Đổi mật khẩu (yêu cầu đăng nhập)' })
-    changePassword(
+    async changePassword(
         @CurrentUser() user: JwtPayload,
         @Body() dto: ChangePasswordDto,
+        @Res({ passthrough: true }) res: express.Response,
     ) {
-        return this.authService.changePassword(user.sub, dto);
+        const result = await this.authService.changePassword(user.sub, dto);
+
+        // Clear refresh cookie since all sessions are invalidated
+        res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/v1/auth' });
+
+        return result;
     }
 
     @Public()
     @Post('forgot-password')
     @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { ttl: 60000, limit: 3 } })
     @ApiOperation({ summary: 'Yêu cầu đặt lại mật khẩu (gửi link qua email)' })
     forgotPassword(@Body() dto: ForgotPasswordDto) {
         return this.authService.forgotPassword(dto);
@@ -127,6 +187,7 @@ export class AuthController {
     @Public()
     @Post('resend-verification')
     @HttpCode(HttpStatus.OK)
+    @Throttle({ default: { ttl: 60000, limit: 3 } })
     @ApiOperation({ summary: 'Gửi lại email xác thực' })
     resendVerification(@Body() dto: ResendVerificationDto) {
         return this.authService.resendVerification(dto.email);

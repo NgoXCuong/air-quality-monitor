@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -17,6 +18,15 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true }),
+        ThrottlerModule.forRoot({
+            throttlers: [
+                {
+                    name: 'default',
+                    ttl: 60000,  // 60 giây
+                    limit: 60,   // 60 requests / phút (mặc định cho tất cả routes)
+                },
+            ],
+        }),
         PrismaModule,
         AuthModule,
         WeatherModule,
@@ -26,6 +36,8 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
         LocationsModule,
     ],
     providers: [
+        // Global rate limiting guard
+        { provide: APP_GUARD, useClass: ThrottlerGuard },
         // Global JWT guard – all routes protected by default, use @Public() to bypass
         { provide: APP_GUARD, useClass: JwtAuthGuard },
         // Global role guard

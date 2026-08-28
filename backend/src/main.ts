@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import * as express from 'express';
@@ -26,9 +27,11 @@ async function bootstrap() {
 
   app.use(helmet());
   app.use(compression());
+  app.use(cookieParser());
 
+  const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
   app.enableCors({
-    origin: '*',
+    origin: frontendUrl,
     credentials: true,
   });
 

@@ -17,7 +17,7 @@ export default function VerifyEmailNotice({ email, onResendSuccess, onBack }: Pr
     setLoading(true);
     setError('');
     try {
-      await authApi.resendVerification();
+      await authApi.resendVerification(email);
       setSuccess(true);
       onResendSuccess();
     } catch (err: unknown) {

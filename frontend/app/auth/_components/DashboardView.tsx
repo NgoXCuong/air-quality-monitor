@@ -21,17 +21,14 @@ export default function DashboardView({ onSuccess: onLogout }: Props) {
       .then((res) => setUser(res.data.data))
       .catch(() => {
         localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         onLogout();
       })
       .finally(() => setLoading(false));
   }, [onLogout]);
 
   const handleLogout = async () => {
-    const refreshToken = localStorage.getItem('refreshToken') || '';
-    try { await authApi.logout(refreshToken); } catch {}
+    try { await authApi.logout(); } catch {}
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
     onLogout();
   };
 

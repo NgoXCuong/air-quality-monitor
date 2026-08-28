@@ -336,6 +336,18 @@ export class AuthService {
     }
 
     // ─────────────────────────────────────────
+    // Public helpers (used by controller for cookie config)
+    // ─────────────────────────────────────────
+
+    /** Returns refresh token max age in milliseconds (for cookie maxAge) */
+    getRefreshTokenMaxAgeMs(): number {
+        const days = parseInt(
+            this.configService.get('JWT_REFRESH_EXPIRES_DAYS', '7'),
+        );
+        return days * 24 * 60 * 60 * 1000;
+    }
+
+    // ─────────────────────────────────────────
     // Private helpers
     // ─────────────────────────────────────────
 
