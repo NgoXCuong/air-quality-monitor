@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import compression from 'compression';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import * as express from 'express';
 
 import { AppModule } from './app.module';
 
@@ -11,6 +14,15 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
+
+  // Đảm bảo thư mục uploads tồn tại
+  const uploadsDir = join(process.cwd(), 'uploads');
+  if (!existsSync(uploadsDir)) {
+    mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  // Serve static files (avatar uploads)
+  app.use('/uploads', express.static(uploadsDir));
 
   app.use(helmet());
   app.use(compression());
