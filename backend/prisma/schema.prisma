@@ -106,6 +106,7 @@ model Location {
   forecasts      ForecastData[]
   aqiForecasts   AqiForecast[]
   predictions    PredictionHistory[]
+  notifications  Notification[]
 
   @@index([latitude, longitude])
 }
@@ -182,29 +183,38 @@ model ForecastData {
 }
 
 model HealthRecommendation {
-  id          String @id @default(uuid())
+  id          String   @id @default(uuid())
   minAqi      Int
   maxAqi      Int
+  targetGroup String   @default("GENERAL") // GENERAL, SENSITIVE, CHILDREN, ELDERLY, RESPIRATORY
   title       String
   description String
+  actions     Json?    // Danh sách hành động khuyến nghị: ["Đeo khẩu trang N95", "Đóng cửa sổ", "Bật máy lọc không khí"]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([minAqi, maxAqi])
+  @@index([targetGroup])
 }
 
 model Notification {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId String?
+  location   Location?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
-  type    AlertType
-  title   String
-  message String
-  status  NotificationStatus @default(UNREAD)
+  type       AlertType
+  title      String
+  message    String
+  metadata   Json?              // Dữ liệu mở rộng (aqi, pm25, coordinates, deep link)
+  status     NotificationStatus @default(UNREAD)
 
-  createdAt DateTime @default(now())
+  createdAt  DateTime           @default(now())
 
   @@index([userId, status])
+  @@index([locationId])
 }
 
 model PredictionHistory {
@@ -245,8 +255,10 @@ model AqiForecast {
   location      Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   forecastHour  Int      // Giờ thứ mấy trong tương lai (1, 2, ..., 48)
-  predictedAqi  Int      // AQI dự đoán từ model LSTM
+  predictedAqi  Int      // AQI dự đoán từ model LSTM/XGBoost
   predictedPm25 Float?   // PM2.5 dự đoán
+  temperature   Float?   // Nhiệt độ dự báo kèm theo (°C)
+  humidity      Float?   // Độ ẩm dự báo kèm theo (%)
   actualAqi     Int?     // AQI thực tế (cập nhật sau để đánh giá model)
 
   confidence    Float?   // Độ tin cậy (0-1)
