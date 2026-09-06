@@ -11,6 +11,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { UsersModule } from './modules/users/users.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { ForecastModule } from './modules/forecast/forecast.module';
+import { HealthModule } from './modules/health/health.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -36,6 +37,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
         UsersModule,
         LocationsModule,
         ForecastModule,
+        HealthModule,
     ],
     providers: [
         // Global rate limiting guard
