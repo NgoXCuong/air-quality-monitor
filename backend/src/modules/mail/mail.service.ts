@@ -120,4 +120,69 @@ export class MailService {
             );
         }
     }
+
+    async sendAqiAlertEmail(
+        email: string,
+        data: {
+            locationName: string;
+            aqi: number;
+            pm25: number;
+            level: string;
+            color: string;
+            advice: string;
+        },
+    ): Promise<void> {
+        const dashboardUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}`;
+
+        try {
+            await this.transporter.sendMail({
+                from: process.env.MAIL_FROM,
+                to: email,
+                subject: `⚠️ Cảnh báo ô nhiễm không khí tại ${data.locationName}: AQI ${data.aqi}`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                        <div style="background-color: #0f172a; padding: 20px; text-align: center; color: white;">
+                            <h2 style="margin: 0; font-size: 20px;">AeroHealth — Cảnh Báo Chất Lượng Không Khí</h2>
+                        </div>
+                        <div style="padding: 24px; background-color: #ffffff;">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <span style="display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; background-color: ${data.color}20; color: ${data.color}; border: 1px solid ${data.color};">
+                                    ${data.level} (AQI ${data.aqi})
+                                </span>
+                            </div>
+
+                            <p style="font-size: 16px; color: #1e293b; line-height: 1.5;">
+                                Xin chào bạn! Hệ thống quan trắc vừa ghi nhận chất lượng không khí tại <strong>${data.locationName}</strong> đã vượt ngưỡng an toàn.
+                            </p>
+
+                            <div style="background-color: #f8fafc; border-left: 4px solid ${data.color}; padding: 16px; border-radius: 6px; margin: 20px 0;">
+                                <p style="margin: 0 0 8px 0; font-weight: bold; color: #0f172a;">Chi tiết quan trắc:</p>
+                                <ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 14px;">
+                                    <li>Chỉ số ô nhiễm AQI: <strong>${data.aqi}</strong></li>
+                                    <li>Nồng độ bụi mịn PM2.5: <strong>${data.pm25} µg/m³</strong></li>
+                                    <li>Thời điểm ghi nhận: <strong>${new Date().toLocaleString('vi-VN')}</strong></li>
+                                </ul>
+                            </div>
+
+                            <div style="background-color: #fffbeb; border: 1px solid #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                                <p style="margin: 0 0 6px 0; font-weight: bold; color: #92400e;">Lời khuyên y tế tức thì:</p>
+                                <p style="margin: 0; color: #b45309; font-size: 14px; line-height: 1.5;">${data.advice}</p>
+                            </div>
+
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; background-color: #059669; color: white; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 14px;">
+                                    Xem Biểu Đồ & Dự Báo 24 Giờ Tiếp Theo
+                                </a>
+                            </div>
+                        </div>
+                        <div style="background-color: #f1f5f9; padding: 12px; text-align: center; font-size: 12px; color: #64748b;">
+                            AeroHealth © 2026 — Đồ Án Tốt Nghiệp Giám Sát Không Khí & Cảnh Báo Sức Khỏe AI
+                        </div>
+                    </div>
+                `,
+            });
+        } catch (error) {
+            console.error('Không thể gửi email cảnh báo AQI:', error?.message);
+        }
+    }
 }

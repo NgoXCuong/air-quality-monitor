@@ -12,6 +12,8 @@ import { UsersModule } from './modules/users/users.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { ForecastModule } from './modules/forecast/forecast.module';
 import { HealthModule } from './modules/health/health.module';
+import { MailModule } from './modules/mail/mail.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -30,6 +32,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
             ],
         }),
         PrismaModule,
+        MailModule,
         AuthModule,
         WeatherModule,
         AirQualityModule,
@@ -38,6 +41,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
         LocationsModule,
         ForecastModule,
         HealthModule,
+        NotificationsModule,
     ],
     providers: [
         // Global rate limiting guard

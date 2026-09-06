@@ -6,7 +6,7 @@ import type { StringValue } from 'ms';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { MailService } from '../mail/mail.service';
+import { MailModule } from '../mail/mail.module';
 import { JwtStrategy } from '../../common/strategies/jwt.strategy';
 
 @Module({
@@ -22,9 +22,10 @@ import { JwtStrategy } from '../../common/strategies/jwt.strategy';
                 },
             }),
         }),
+        MailModule,
     ],
     controllers: [AuthController],
-    providers: [AuthService, JwtStrategy, MailService],
+    providers: [AuthService, JwtStrategy],
     exports: [JwtStrategy, PassportModule, JwtModule],
 })
 export class AuthModule {}

@@ -3,6 +3,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { WeatherService } from '../weather/weather.service';
 import { AirQualityService } from '../air-quality/air-quality.service';
 import { ForecastService } from '../forecast/forecast.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class SchedulerService {
@@ -12,6 +14,8 @@ export class SchedulerService {
         private readonly weatherService: WeatherService,
         private readonly airQualityService: AirQualityService,
         private readonly forecastService: ForecastService,
+        private readonly notificationsService: NotificationsService,
+        private readonly prisma: PrismaService,
     ) {}
 
     /**
@@ -27,6 +31,24 @@ export class SchedulerService {
 
             const aqiRes = await this.airQualityService.syncAirQuality();
             this.logger.log(`  └─ AQI Sync: ${aqiRes.message}`);
+
+            // Tự động quét và kích hoạt cảnh báo ô nhiễm vượt ngưỡng
+            const latestAirQualityList = await this.prisma.airQualityData.findMany({
+                distinct: ['locationId'],
+                orderBy: { timestamp: 'desc' },
+                include: { location: true },
+            });
+
+            for (const item of latestAirQualityList) {
+                if (item.aqi >= 150 && item.location) {
+                    await this.notificationsService.checkAndDispatchAqiAlerts(
+                        item.locationId,
+                        item.aqi,
+                        item.pm25 || 50,
+                        item.location.name,
+                    );
+                }
+            }
 
             this.logger.log('✅ Scheduled Synchronization completed successfully.');
         } catch (error) {
