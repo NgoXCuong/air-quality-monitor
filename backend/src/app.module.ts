@@ -10,6 +10,7 @@ import { AirQualityModule } from './modules/air-quality/air-quality.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { UsersModule } from './modules/users/users.module';
 import { LocationsModule } from './modules/locations/locations.module';
+import { ForecastModule } from './modules/forecast/forecast.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -34,6 +35,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
         SchedulerModule,
         UsersModule,
         LocationsModule,
+        ForecastModule,
     ],
     providers: [
         // Global rate limiting guard

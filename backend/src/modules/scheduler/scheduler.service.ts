@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WeatherService } from '../weather/weather.service';
 import { AirQualityService } from '../air-quality/air-quality.service';
+import { ForecastService } from '../forecast/forecast.service';
 
 @Injectable()
 export class SchedulerService {
@@ -10,6 +11,7 @@ export class SchedulerService {
     constructor(
         private readonly weatherService: WeatherService,
         private readonly airQualityService: AirQualityService,
+        private readonly forecastService: ForecastService,
     ) {}
 
     /**
@@ -33,10 +35,26 @@ export class SchedulerService {
     }
 
     /**
+     * Cron Job định kỳ 3 giờ / lần: Tự động chạy dự báo chuỗi thời gian 24h AI cho tất cả các địa điểm
+     */
+    @Cron(CronExpression.EVERY_3_HOURS)
+    async handleCronForecastSync() {
+        this.logger.log('🤖 Starting Scheduled 24h AI Forecast Generation...');
+
+        try {
+            const res = await this.forecastService.generateForecastForAll(false);
+            this.logger.log(`  └─ 24h AI Forecast Sync: ${res.message}`);
+        } catch (error) {
+            this.logger.error(`❌ Scheduled Forecast Generation failed: ${error?.message}`);
+        }
+    }
+
+    /**
      * Thủ công kích hoạt đồng bộ
      */
     async triggerSyncAll() {
         await this.handleCronSyncData();
-        return { message: 'Đã kích hoạt đồng bộ dữ liệu thời tiết & AQI định kỳ thủ công thành công.' };
+        await this.handleCronForecastSync();
+        return { message: 'Đã kích hoạt đồng bộ dữ liệu thời tiết, AQI & dự báo AI 24h định kỳ thủ công thành công.' };
     }
 }
