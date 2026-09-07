@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, MinLength, Matches } from 'class-validator';
+import { IsEmail, MinLength, Matches, IsOptional, IsBoolean } from 'class-validator';
 
 export class LoginDto {
     @ApiProperty({ example: 'user@example.com', description: 'Địa chỉ email' })
@@ -12,4 +12,9 @@ export class LoginDto {
         message: 'Mật khẩu phải chứa ít nhất 1 chữ cái và 1 số',
     })
     password: string;
+
+    @ApiProperty({ example: true, required: false, description: 'Ghi nhớ đăng nhập' })
+    @IsOptional()
+    @IsBoolean({ message: 'rememberMe phải là kiểu boolean' })
+    rememberMe?: boolean;
 }
