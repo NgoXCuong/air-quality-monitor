@@ -14,6 +14,7 @@ import { ForecastModule } from './modules/forecast/forecast.module';
 import { HealthModule } from './modules/health/health.module';
 import { MailModule } from './modules/mail/mail.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SystemLogsModule } from './modules/system-logs/system-logs.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -42,6 +43,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
         ForecastModule,
         HealthModule,
         NotificationsModule,
+        SystemLogsModule,
     ],
     providers: [
         // Global rate limiting guard
